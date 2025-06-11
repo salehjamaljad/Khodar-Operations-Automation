@@ -18,7 +18,7 @@ from zipfile import ZipFile
 
 
 st.set_page_config(page_title="Download All Orders as ZIP", layout="centered")
-st.title("📦 Convert Pending Purchase Orders into Job Orders & Invoices")
+st.title("📦 Download All Pending Purchase Orders (ZIP)")
 
 
 SUPABASE_URL = "https://rabwvltxgpdyvpmygdtc.supabase.co"
@@ -218,29 +218,38 @@ if st.button("Download Pending Orders"):
                                     delivery_date=order.get("delivery_date"),
                                     po_value=order.get("po_number", "N/A")
                                 )
-                                filename = f"GoodsMart_{delivery_date_str}.xlsx"
                                 invoice_number += 1
 
-                                mark_purchase_order_done(client="GoodsMart", delivery_date=order.get("delivery_date"), city=order.get("city"))
+                                mark_purchase_order_done(
+                                    client="GoodsMart",
+                                    delivery_date=order.get("delivery_date"),
+                                    city=order.get("city")
+                                )
 
+                                # Upload as Invoice
                                 upload_order_and_metadata(
                                     file_bytes=processed_excel,
-                                    filename=f"GoodsMart_{delivery_date_str}.xlsx",
+                                    filename=f"GoodsMart_Invoice_{delivery_date_str}.xlsx",
                                     client="GoodsMart",
                                     order_type="Invoice",
                                     order_date=order["order_date"],
                                     delivery_date=order["delivery_date"],
-                                    po_number=order.get("po_number")
+                                    po_number=order.get("po_number"),
+                                    city=order.get("city")
                                 )
+
+                                # Upload again as Job Order (with different name)
                                 upload_order_and_metadata(
                                     file_bytes=processed_excel,
-                                    filename=f"GoodsMart_{delivery_date_str}.xlsx",
+                                    filename=f"GoodsMart_JobOrder_{delivery_date_str}.xlsx",
                                     client="GoodsMart",
-                                    order_type="job order",
+                                    order_type="Job Order",
                                     order_date=order["order_date"],
                                     delivery_date=order["delivery_date"],
-                                    po_number=order.get("po_number")
+                                    po_number=order.get("po_number"),
+                                    city=order.get("city")
                                 )
+
 
                             elif selected_key == "khateer":
                                 output_zip_bytes, file_index = rabbitInvoices(
@@ -447,17 +456,63 @@ if st.button("Download Pending Orders"):
                                 else:
                                     invoice_number += 2
 
+                                # Split Excel files from ZIP based on name
+                                zip_file = ZipFile(BytesIO(output_zip_bytes))
+                                job_order_files = []
+                                invoice_files = []
 
-                                mark_purchase_order_done(client="Breadfast", delivery_date=order.get("delivery_date"), city=order.get("city"))
-                                upload_order_and_metadata(
-                                    file_bytes=output_zip_bytes,
-                                    filename=f"Breadfast_{city}_{delivery_date_str}.zip",
+                                for name in zip_file.namelist():
+                                    if not name.lower().endswith(".xlsx"):
+                                        continue
+                                    content = zip_file.read(name)
+                                    if "مجمع" in name:
+                                        job_order_files.append((name, content))
+                                    else:
+                                        invoice_files.append((name, content))
+
+                                # Upload job order files (together as one ZIP)
+                                if job_order_files:
+                                    job_zip_io = BytesIO()
+                                    with ZipFile(job_zip_io, mode="w") as zf:
+                                        for fname, content in job_order_files:
+                                            zf.writestr(fname, content)
+                                    job_zip_io.seek(0)
+
+                                    upload_order_and_metadata(
+                                        file_bytes=job_zip_io.getvalue(),
+                                        filename=f"Breadfast_JobOrder_{city}_{delivery_date_str}.zip",
+                                        client="Breadfast",
+                                        order_type="Job Order",
+                                        order_date=order["order_date"],
+                                        delivery_date=order["delivery_date"],
+                                        city=city
+                                    )
+
+                                # Upload all invoice files in a single ZIP (safe)
+                                if invoice_files:
+                                    invoice_zip_io = BytesIO()
+                                    with ZipFile(invoice_zip_io, mode="w") as zf:
+                                        for fname, content in invoice_files:
+                                            zf.writestr(fname, content)
+                                    invoice_zip_io.seek(0)
+
+                                    upload_order_and_metadata(
+                                        file_bytes=invoice_zip_io.getvalue(),
+                                        filename=f"Breadfast_Invoices_{city}_{delivery_date_str}.zip",
+                                        client="Breadfast",
+                                        order_type="Invoice",
+                                        order_date=order["order_date"],
+                                        delivery_date=order["delivery_date"],
+                                        city=city
+                                    )
+
+                                mark_purchase_order_done(
                                     client="Breadfast",
-                                    order_type="Job Order",
-                                    order_date=order["order_date"],
-                                    delivery_date=order["delivery_date"],
-                                    city=city
+                                    delivery_date=order.get("delivery_date"),
+                                    city=order.get("city")
                                 )
+
+
 
                         except Exception as e:
                             st.error(f"Error processing {file_name}: {e}")
