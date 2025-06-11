@@ -1,11 +1,20 @@
+# Core packages
 streamlit
+pandas
+requests
+fuzzywuzzy
+python-docx
+pytz
+xlsxwriter
+openpyxl
+pdfplumber
+
+# Streamlit-specific integrations
 st-gsheets-connection
-streamlit
+
+# Google Sheets API
 gspread
 gspread-dataframe
 google-api-python-client
-oauth2client
 google-auth
-openpyxl
-python-docx
-pytz
+
