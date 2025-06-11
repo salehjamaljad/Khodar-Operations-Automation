@@ -18,7 +18,7 @@ from zipfile import ZipFile
 
 
 st.set_page_config(page_title="Download All Orders as ZIP", layout="centered")
-st.title("📦 Download All Pending Purchase Orders (ZIP)")
+st.title("📦 Transform Pending Purhcase Orders Into Job Orders & Invoices")
 
 
 SUPABASE_URL = "https://rabwvltxgpdyvpmygdtc.supabase.co"
