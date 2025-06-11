@@ -18,7 +18,7 @@ from zipfile import ZipFile
 
 
 st.set_page_config(page_title="Download All Orders as ZIP", layout="centered")
-st.title("📦 Download All Pending Purchase Orders (ZIP)")
+st.title("📦 Convert Pending Purchase Orders into Job Orders & Invoices")
 
 
 SUPABASE_URL = "https://rabwvltxgpdyvpmygdtc.supabase.co"
@@ -246,6 +246,7 @@ if st.button("Download Pending Orders"):
                                 output_zip_bytes, file_index = rabbitInvoices(
                                     file_data,
                                     invoice_number,
+                                    order["delivery_date"],
                                     branches_translation={
                                         "ميفيدا": "Mevida",
                                         "فرع المعادي": "MAADI",
@@ -310,6 +311,7 @@ if st.button("Download Pending Orders"):
                                 output_zip_bytes, file_index = rabbitInvoices(
                                     file_data,
                                     invoice_number,
+                                    order["delivery_date"],
                                     branches_translation={
                                         "ميفيدا": "Mevida",
                                         "فرع المعادي": "MAADI",
