@@ -9,4 +9,3 @@ google-auth
 openpyxl
 python-docx
 pytz
-re
