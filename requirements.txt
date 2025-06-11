@@ -1,0 +1,12 @@
+streamlit
+st-gsheets-connection
+streamlit
+gspread
+gspread-dataframe
+google-api-python-client
+oauth2client
+google-auth
+openpyxl
+python-docx
+pytz
+re
