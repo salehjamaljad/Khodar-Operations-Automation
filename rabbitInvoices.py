@@ -10,7 +10,7 @@ import io
 import zipfile
 import pandas as pd
 
-def rabbitInvoices(zip_bytes: bytes, base_invoice_num: int, branches_translation: dict) -> bytes:
+def rabbitInvoices(zip_bytes: bytes, base_invoice_num: int, delivery_date: str, branches_translation: dict) -> bytes:
     """
     Processes a ZIP of Excel invoices and returns a new ZIP containing:
     - Individual formatted invoices
@@ -50,7 +50,6 @@ def rabbitInvoices(zip_bytes: bytes, base_invoice_num: int, branches_translation
                     branch = str(df2.iloc[1, 1]).strip()
                     order_number = int(df2.iloc[2, 6])
                     invoice_total = df2.iloc[-9, -1]
-                    delivery_date = pd.to_datetime(df2.iloc[1, 6], errors="coerce").strftime("%Y-%m-%d")
 
                     name_lc = str(df.iat[0, 3]) if df.shape[0] > 0 and df.shape[1] > 3 else ""
                     prefix = "خطير" if "khateer" in name_lc.lower() else "رابيت"
