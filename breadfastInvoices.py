@@ -86,7 +86,7 @@ def process_breadfast_invoice(
         quantities = re.findall(r"\s(\d+(?:\.\d+)?)\.0000000\s", text_block)
 
         n = len(ids)
-        # mansoura does not need insert_nulls
+        barcodes = insert_nulls(barcodes, ids)
         barcodes = barcodes[:n] + [""] * max(0, n - len(barcodes))
         quantities = quantities[:n] + ["0"] * max(0, n - len(quantities))
         quantities = [int(float(q)) for q in quantities]
