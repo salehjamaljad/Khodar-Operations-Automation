@@ -289,7 +289,7 @@ if st.button("Download Pending Orders"):
                                 if inner_zip_bytes:
                                     upload_order_and_metadata(
                                         file_bytes=inner_zip_bytes,
-                                        filename="Khateer_Invoice.zip",
+                                        filename=f"Khateer_Invoice_{order['delivery_date']}.zip",
                                         client="Khateer",
                                         order_type="Invoice",
                                         order_date=order["order_date"],
