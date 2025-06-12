@@ -187,19 +187,19 @@ def rabbitInvoices(zip_bytes: bytes, base_invoice_num: int, delivery_date: str, 
         if khateer_pivot is not None:
             khateer_buffer = io.BytesIO()
             khateer_pivot.to_excel(khateer_buffer, index=False)
-            output_zip.writestr("مجمع خطير.xlsx", khateer_buffer.getvalue())
+            output_zip.writestr(f"مجمع خطير_{delivery_date}.xlsx", khateer_buffer.getvalue())
 
         if khodar_pivot is not None:
             khodar_buffer = io.BytesIO()
             khodar_pivot.to_excel(khodar_buffer, index=False)
-            output_zip.writestr("مجمع رابيت.xlsx", khodar_buffer.getvalue())
+            output_zip.writestr(f"مجمع رابيت_{delivery_date}.xlsx", khodar_buffer.getvalue())
 
         if po_totals_rows:
             po_totals_df = pd.DataFrame(po_totals_rows)
             po_totals_df["Invoice Total"] = pd.to_numeric(po_totals_df["Invoice Total"], errors="coerce")
             po_totals_buffer = io.BytesIO()
             po_totals_df.to_excel(po_totals_buffer, index=False)
-            output_zip.writestr("po_totals.xlsx", po_totals_buffer.getvalue())
+            output_zip.writestr(f"po_totals_{delivery_date}.xlsx", po_totals_buffer.getvalue())
 
     output_zip_io.seek(0)
     return output_zip_io.getvalue(), file_index
