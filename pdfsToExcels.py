@@ -519,8 +519,14 @@ def process_talabat_invoices(
             f"مجمع_طلبات_اسكندرية_{selected_date}.xlsx",
             f"مجمع_طلبات_الخضار_الجاهز_{selected_date}.xlsx",
             f"مجمع_طلبات_القاهرة_{selected_date}.xlsx",
-            "فواتير.xlsx",
+            "فواتير.xlsx"
         }
+        excluded_keywords = {"وينجت", "الابراهيميه", "سيدي بشر"}
+        combined_wb = Workbook()
+        combined_ws = combined_wb.active
+        combined_ws.title = "CombinedOrders"
+        current_row = 1
+        first_file = True  # Add this before the loop that appends to combined_ws
         for filename in filenames:
             if filename in excluded_files or not filename.endswith(".xlsx"):
                 continue
@@ -567,12 +573,143 @@ def process_talabat_invoices(
         po_totals_wb.save(po_totals_buffer)
         po_totals_buffer.seek(0)
 
+        
         # Step 6: Build final ZIP containing:
         #   1) Inner ZIP of per-branch XLSX files (excluding excluded_files),
         #   2) po_totals,
         #   3) the three region-grouped xlsx buffers (alex/ready/cairo),
         #   4) "فواتير.xlsx" (the consolidated invoices workbook).
         output_zip_buffer = BytesIO()
+
+
+
+        g1_insertions = []  # List to hold (G1_value, F_value)
+        for filename in os.listdir(output_dir):
+            # Skip non-xlsx or excluded by name or excluded by keyword
+            if (
+                not filename.endswith(".xlsx")
+                or filename in excluded_files
+                or any(kw in filename for kw in excluded_keywords)
+            ):
+                continue
+
+            file_path = os.path.join(output_dir, filename)
+            wb = load_workbook(file_path, data_only=True)
+
+            # Skip if there’s no Sheet1
+            if "Sheet1" not in wb.sheetnames:
+                continue
+
+            ws = wb["Sheet1"]
+            h1_text = ws["H1"].value  # We’ll move this into F2 later
+
+            # 4) Create a fresh in-memory Workbook to hold the “modified” version of Sheet1
+            new_wb = Workbook()
+            new_ws = new_wb.active
+
+            # Copy all rows from original ws, but drop column 1 (“SKU”)
+            for row_idx, row in enumerate(ws.iter_rows(values_only=True), start=1):
+                if row_idx == 1:
+                    # Header row: drop the very first cell
+                    headers = list(row)[1:]
+                    new_ws.append(headers)
+                else:
+                    # Data rows: again, skip the first column
+                    new_ws.append(list(row)[1:])
+
+            # 5) Find the indices of "Total", "Qty", and "Barcode" in the new_ws header
+            header_cells = new_ws[1]  # tuple of Cell objects in row 1
+            total_col_idx = None
+            qty_col_idx = None
+            barcode_col_idx = None
+
+            for idx, cell in enumerate(header_cells, start=1):
+                cell_val = cell.value
+                if cell_val is None:
+                    continue
+                lower = str(cell_val).strip().lower()
+                if lower == "total":
+                    total_col_idx = idx
+                elif lower == "qty":
+                    qty_col_idx = idx
+                elif lower == "barcode":
+                    barcode_col_idx = idx
+
+            # If there's no “Total” column, skip this file
+            if total_col_idx is None:
+                continue
+
+            # 6) Sum up the “Total” column (numbers only), then append that sum as a new row
+            total_sum = 0
+            for row in new_ws.iter_rows(min_row=2, min_col=total_col_idx, max_col=total_col_idx):
+                val = row[0].value
+                if isinstance(val, (int, float)):
+                    total_sum += val
+
+            # Write the sum in the “Total” column of the first blank row
+            first_blank_row = new_ws.max_row + 1
+            total_col_letter = get_column_letter(total_col_idx)
+            new_ws[f"{total_col_letter}{first_blank_row}"] = total_sum
+
+            # In the row below the sum, put “*” under “Qty” if that column exists
+            if qty_col_idx is not None:
+                qty_col_letter = get_column_letter(qty_col_idx)
+                new_ws[f"{qty_col_letter}{first_blank_row + 1}"] = "*"
+
+            # 7) Move H1's value into cell F2
+            new_ws["F2"] = h1_text
+
+            # 8) Put the filename into G1 (one column to the right of “F”)
+            new_ws["G1"] = filename.split("_")[0]
+            g1_value = new_ws["G1"].value  # Store G1 for later
+
+            # 9) Convert every “Barcode” cell (column) to a plain integer (no scientific notation)
+            if barcode_col_idx is not None:
+                for row in new_ws.iter_rows(min_row=2, min_col=barcode_col_idx, max_col=barcode_col_idx):
+                    cell = row[0]
+                    cell_val = cell.value
+                    if isinstance(cell_val, (int, float, str)):
+                        try:
+                            int_val = int(float(cell_val))
+                            cell.value = int_val
+                            cell.number_format = '0'  # No decimal places
+                        except:
+                            pass
+            
+            
+            # 10) Append ALL of new_ws’s rows into combined_ws
+            if first_file:
+                combined_ws.append([])  # Adds an empty row before the first table
+                first_file = False
+                
+            for row_idx, row in enumerate(new_ws.iter_rows(values_only=True), start=1):
+                if row_idx == 1:
+                    continue  # Skip header
+                combined_ws.append(row)
+                # Check F column (column index 6, since you dropped 1st column)
+                if len(row) >= 6 and row[5]:  # 0-based index: column F is index 5
+                    current_combined_row = combined_ws.max_row
+                    g1_insertions.append((g1_value, current_combined_row - 1))  # Place G1 in column G (index 6), row above
+        for g1_value, f_row in g1_insertions:
+            combined_ws[f"G{f_row}"] = g1_value
+
+        final_combined_buffer = BytesIO()
+        combined_wb.save(final_combined_buffer)
+        final_combined_buffer.seek(0)
+
+
+        output_zip_buffer = BytesIO()
+
+        excluded_files = {
+                    f"po_totals_{selected_date}.xlsx",
+                    f"مجمع_طلبات_اسكندرية_{selected_date}.xlsx",
+                    f"مجمع_طلبات_الخضار_الجاهز_{selected_date}.xlsx",
+                    f"مجمع_طلبات_القاهرة_{selected_date}.xlsx",
+                    "فواتير.xlsx",
+                    f"طلبيات_{selected_date}.xlsx"
+                }
+
+
         with zipfile.ZipFile(output_zip_buffer, "w") as zipf:
             inner_zip_buffer = BytesIO()
             with zipfile.ZipFile(inner_zip_buffer, "w") as inner_zip:
@@ -587,6 +724,7 @@ def process_talabat_invoices(
             zipf.writestr(f"مجمع_طلبات_الخضار_الجاهز_{selected_date}.xlsx", ready_buffer.getvalue())
             zipf.writestr(f"مجمع_طلبات_القاهرة_{selected_date}.xlsx", cairo_buffer.getvalue())
             zipf.writestr("فواتير.xlsx", invoices_buffer.getvalue())
+            zipf.writestr(f"طلبيات_{selected_date}.xlsx", final_combined_buffer.getvalue())
 
         output_zip_buffer.seek(0)
         return output_zip_buffer.getvalue(), offset
