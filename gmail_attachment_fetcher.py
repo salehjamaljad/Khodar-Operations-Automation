@@ -7,8 +7,8 @@ from config import authenticate_gmail, upload_order_and_metadata
 
 
 def search_recent_tmart_emails(service):
-    after = (datetime.utcnow() - timedelta(hours=1)).strftime("%Y/%m/%d")
-    query = f'after:{after} (subject:"TMart Purchase Orders" OR from:sherif.hossam@talabat.com)'
+    after_ts = int((datetime.utcnow() - timedelta(hours=1)).timestamp())
+    query = f'after:{after_ts} (subject:"TMart Purchase Orders" OR from:sherif.hossam@talabat.com)'
     results = service.users().messages().list(userId='me', q=query).execute()
     return results.get('messages', [])
 
