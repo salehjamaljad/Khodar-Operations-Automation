@@ -509,3 +509,101 @@ special_codes = {
         "EG_Alex East_DS_", "EG_Alex", "EG_Zahraa Maadi", "EG_Nasrcity", "EG_Mansoura", 
         "EG_Tagamoa Golden", "EG_Tagamoa", "EG_Madinaty", "EG_Hadayek", "EG_October", "EG_Shrouk_", "EG_Mokatam", "EG_Sheikh"
     }
+
+
+
+
+
+
+
+import os
+import requests
+import io
+from datetime import datetime
+from typing import Optional
+from google.oauth2.credentials import Credentials
+from google.auth.transport.requests import Request
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+
+SUPABASE_URL = "https://rabwvltxgpdyvpmygdtc.supabase.co"
+API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhYnd2bHR4Z3BkeXZwbXlnZHRjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkyMzg4MTQsImV4cCI6MjA2NDgxNDgxNH0.hnQYr3jL0rLTNOGXE0EgF9wmd_bynff6JXtqwjCOc6Y"
+AUTHORIZATION = f"Bearer {API_KEY}"
+STORAGE_BUCKET = "order_files"
+TABLE_NAME = "orders"
+SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
+
+
+def authenticate_gmail():
+    creds = None
+    if os.path.exists('token.json'):
+        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
+
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
+            creds = flow.run_local_server(port=0)
+        with open('token.json', 'w') as token:
+            token.write(creds.to_json())
+
+    return build('gmail', 'v1', credentials=creds)
+
+
+def upload_order_and_metadata(
+    file_bytes: bytes,
+    filename: str,
+    client: str,
+    order_type: str,
+    order_date: str,
+    delivery_date: str,
+    status: str = "Pending",
+    city: Optional[str] = None,
+    po_number: Optional[int] = None,
+):
+    object_name = f"{int(order_date.replace('-', ''))}-{filename}"
+    storage_url = f"{SUPABASE_URL}/storage/v1/object/{STORAGE_BUCKET}/{object_name}"
+
+    upload_response = requests.post(
+        storage_url,
+        headers={
+            "apikey": API_KEY,
+            "authorization": AUTHORIZATION,
+            "x-upsert": "false",
+        },
+        files={
+            "file": (filename, file_bytes, "application/zip")
+        }
+    )
+
+    if upload_response.status_code != 200:
+        raise Exception(f"Upload failed: {upload_response.text}")
+
+    file_url = f"{SUPABASE_URL}/storage/v1/object/public/{STORAGE_BUCKET}/{object_name}"
+    insert_payload = [{
+        "client": client,
+        "order_type": order_type,
+        "order_date": order_date,
+        "delivery_date": delivery_date,
+        "status": status,
+        "file_urls": [file_url],
+        "city": city,
+        "po_number": po_number
+    }]
+
+    insert_response = requests.post(
+        f"{SUPABASE_URL}/rest/v1/{TABLE_NAME}",
+        headers={
+            "apikey": API_KEY,
+            "authorization": AUTHORIZATION,
+            "content-type": "application/json",
+            "prefer": "return=representation",
+        },
+        json=insert_payload
+    )
+
+    if insert_response.status_code not in [200, 201]:
+        raise Exception(f"Insertion failed: {insert_response.text}")
+
+    return insert_response.json()
