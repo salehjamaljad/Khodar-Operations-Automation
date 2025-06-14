@@ -9,6 +9,10 @@ xlsxwriter
 openpyxl
 pdfplumber
 
+# OAuth & Gmail API dependencies
+google-auth-oauthlib
+google-auth-httplib2
+
 # Streamlit-specific integrations
 st-gsheets-connection
 
@@ -17,4 +21,3 @@ gspread
 gspread-dataframe
 google-api-python-client
 google-auth
-
