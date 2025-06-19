@@ -1,59 +1,48 @@
 import streamlit as st
 import requests
-import io
-import zipfile
+from io import BytesIO
+from zipfile import ZipFile
 from datetime import datetime
 from streamlit_gsheets import GSheetsConnection
 from goodsmartInvoices import generate_invoice_excel
+from halanInvoices import build_master_and_invoices_bytes
 from rabbitInvoices import rabbitInvoices
 from pdfsToExcels import process_talabat_invoices
-from config import translation_dict, categories_dict, branches_dict, branches_translation_tlbt, columns
 from breadfastInvoices import process_breadfast_invoice
-from io import BytesIO
+from config import (
+    translation_dict,
+    categories_dict,
+    branches_dict,
+    branches_translation_tlbt,
+    columns
+)
 import os
 from tempfile import NamedTemporaryFile
 from typing import Optional
-from zipfile import ZipFile
 
+# --- Streamlit Page Setup ---
+st.set_page_config(page_title="Job Orders & Invoices Generator", layout="centered")
+st.title("📦 Transform Pending Purchase Orders Into Job Orders & Invoices")
 
-
-st.set_page_config(page_title="Download All Orders as ZIP", layout="centered")
-st.title("📦 Transform Pending Purhcase Orders Into Job Orders & Invoices")
-
-
+# --- Supabase Configuration ---
 SUPABASE_URL = "https://rabwvltxgpdyvpmygdtc.supabase.co"
 API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhYnd2bHR4Z3BkeXZwbXlnZHRjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkyMzg4MTQsImV4cCI6MjA2NDgxNDgxNH0.hnQYr3jL0rLTNOGXE0EgF9wmd_bynff6JXtqwjCOc6Y"
 AUTHORIZATION = f"Bearer {API_KEY}"
 STORAGE_BUCKET = "order_files"
 TABLE_NAME = "orders"
-
-
-# Supabase constants
-SUPABASE_API_URL = "https://rabwvltxgpdyvpmygdtc.supabase.co/rest/v1/orders"
+SUPABASE_API_URL = f"{SUPABASE_URL}/rest/v1/{TABLE_NAME}"
 SUPABASE_HEADERS = {
     "accept": "*/*",
-    "accept-language": "en-GB,en;q=0.8",
-    "accept-profile": "public",
-    "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhYnd2bHR4Z3BkeXZwbXlnZHRjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkyMzg4MTQsImV4cCI6MjA2NDgxNDgxNH0.hnQYr3jL0rLTNOGXE0EgF9wmd_bynff6JXtqwjCOc6Y",
-    "origin": "https://po.khodar.com",
-    "referer": "https://po.khodar.com/",
-    "user-agent": "Mozilla/5.0",
-    "x-client-info": "supabase-js-web/2.50.0"
+    "apikey": API_KEY,
+    "authorization": AUTHORIZATION
 }
-import requests
 
-def mark_purchase_order_done(client, delivery_date, city=None):
-    SUPABASE_URL = "https://rabwvltxgpdyvpmygdtc.supabase.co"
-    API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhYnd2bHR4Z3BkeXZwbXlnZHRjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkyMzg4MTQsImV4cCI6MjA2NDgxNDgxNH0.hnQYr3jL0rLTNOGXE0EgF9wmd_bynff6JXtqwjCOc6Y"
-    AUTH_HEADER = {
-        "apikey": API_KEY,
-        "authorization": f"Bearer {API_KEY}",
-        "content-type": "application/json",
-        "accept": "*/*",
-        "content-profile": "public"
-    }
-
-    # Step 1: Fetch the matching order(s)
+# --- Helpers ---
+def mark_purchase_order_done(client: str, delivery_date: str, city: Optional[str] = None):
+    """
+    Marks the matching pending Purchase Order(s) for given client and date as Done in Supabase.
+    """
+    headers = {"apikey": API_KEY, "authorization": AUTHORIZATION, "content-type": "application/json"}
     params = {
         "client": f"eq.{client}",
         "order_type": "eq.Purchase Order",
@@ -63,34 +52,17 @@ def mark_purchase_order_done(client, delivery_date, city=None):
     if city:
         params["city"] = f"eq.{city}"
 
-    response = requests.get(
-        f"{SUPABASE_URL}/rest/v1/orders",
-        headers=AUTH_HEADER,
-        params=params
-    )
-    
-    if response.status_code != 200:
-        raise Exception(f"Failed to fetch orders: {response.text}")
-
-    orders = response.json()
-    if not orders:
-        print("No matching pending purchase order found.")
-        return
-
+    resp = requests.get(f"{SUPABASE_URL}/rest/v1/orders", headers=headers, params=params)
+    resp.raise_for_status()
+    orders = resp.json()
     for order in orders:
-        order_id = order["id"]
-
-        # Step 2: Update the status to "Done"
-        patch_response = requests.patch(
-            f"{SUPABASE_URL}/rest/v1/orders?id=eq.{order_id}",
-            headers=AUTH_HEADER,
+        oid = order.get("id")
+        patch = requests.patch(
+            f"{SUPABASE_URL}/rest/v1/orders?id=eq.{oid}",
+            headers=headers,
             json={"status": "Done"}
         )
-
-        if patch_response.status_code == 204:
-            print(f"Order {order_id} marked as Done.")
-        else:
-            print(f"Failed to update order {order_id}: {patch_response.text}")
+        patch.raise_for_status()
 
 
 def upload_order_and_metadata(
@@ -100,37 +72,31 @@ def upload_order_and_metadata(
     order_type: str,
     order_date: str,
     delivery_date: str,
-    status: str = "Pending",
-    city: Optional[str] = None,
     po_number: Optional[int] = None,
+    city: Optional[str] = None,
+    status: str = "Pending"
 ):
+    """
+    Uploads file to Supabase storage and records metadata in orders table.
+    """
+    # upload file
     object_name = f"{int(order_date.replace('-', ''))}-{filename}"
     storage_url = f"{SUPABASE_URL}/storage/v1/object/{STORAGE_BUCKET}/{object_name}"
-
     with NamedTemporaryFile(delete=False, suffix=os.path.splitext(filename)[1]) as tmp:
         tmp.write(file_bytes)
         tmp_path = tmp.name
-
-    with open(tmp_path, "rb") as f:
-        upload_response = requests.post(
+    with open(tmp_path, 'rb') as f:
+        up = requests.post(
             storage_url,
-            headers={
-                "apikey": API_KEY,
-                "authorization": AUTHORIZATION,
-                "x-upsert": "false",
-            },
-            files={
-                "file": (filename, f, "application/octet-stream")
-            }
+            headers={"apikey": API_KEY, "authorization": AUTHORIZATION},
+            files={"file": (filename, f, "application/octet-stream")}
         )
-
     os.remove(tmp_path)
-
-    if upload_response.status_code != 200:
-        raise Exception(f"Upload failed: {upload_response.text}")
-
+    up.raise_for_status()
     file_url = f"{SUPABASE_URL}/storage/v1/object/public/{STORAGE_BUCKET}/{object_name}"
-    insert_payload = [{
+
+    # insert metadata record
+    payload = [{
         "client": client,
         "order_type": order_type,
         "order_date": order_date,
@@ -140,123 +106,110 @@ def upload_order_and_metadata(
         "city": city,
         "po_number": po_number
     }]
-
-    insert_response = requests.post(
-        f"{SUPABASE_URL}/rest/v1/{TABLE_NAME}",
-        headers={
-            "apikey": API_KEY,
-            "authorization": AUTHORIZATION,
-            "content-type": "application/json",
-            "prefer": "return=representation",
-        },
-        json=insert_payload
+    ins = requests.post(
+        SUPABASE_API_URL,
+        headers={"apikey": API_KEY, "authorization": AUTHORIZATION, "content-type": "application/json", "prefer": "return=representation"},
+        json=payload
     )
-
-    if insert_response.status_code not in [200, 201]:
-        raise Exception(f"Insertion failed: {insert_response.text}")
-
-    return insert_response.json()
-
+    ins.raise_for_status()
+    return ins.json()
 
 # --- Client Selection ---
 client_options = {
     "goodsmart": "GoodsMart",
+    "halan": "Halan",
     "talabat": "Talabat",
     "khateer": "Khateer",
     "rabbit": "Rabbit",
     "breadfast": "BreadFast"
 }
-
 selected_client = st.selectbox("Select Client", list(client_options.values()))
 selected_key = selected_client.strip().lower()
 
-# --- Invoice Number Handling ---
+# --- Invoice Number from Google Sheets ---
 conn = st.connection("gsheets", type=GSheetsConnection)
-df_invoice_number = conn.read(worksheet="Saved", cell="A1", ttl=5, headers=False)
-invoice_number = int(df_invoice_number.iat[0, 0])
+df_inv = conn.read(worksheet="Saved", cell="A1", ttl=5, headers=False)
+invoice_number = int(df_inv.iat[0, 0])
 
-
+# --- Fetch & Download Helpers ---
 def fetch_pending_orders():
-    params = {"select": "*", "order": "created_at.desc"}
-    resp = requests.get(SUPABASE_API_URL, headers=SUPABASE_HEADERS, params=params)
-    if resp.status_code == 200:
-        orders = resp.json()
-        return [o for o in orders if o.get("status") == "Pending"]
-    return []
+    resp = requests.get(SUPABASE_API_URL + "?select=*&order=created_at.desc", headers=SUPABASE_HEADERS)
+    resp.raise_for_status()
+    return [o for o in resp.json() if o.get("status") == "Pending"]
 
+def download_from_url(url: str) -> bytes:
+    r = requests.get(url)
+    r.raise_for_status()
+    return r.content
 
-def download_from_url(file_url):
-    resp = requests.get(file_url)
-    return resp.content if resp.status_code == 200 else None
-
-
-if st.button("Download Pending Orders"):
+# --- Main Processing ---
+if st.button("Generate Job Orders & Invoices"):
     with st.spinner("Fetching and processing files..."):
         orders = fetch_pending_orders()
-
         if not orders:
-            st.info("No pending orders were found.")
-        else:
-            for order in orders:
-                if (
-                    order.get("order_type") == "Purchase Order"
-                    and order.get("client", "").strip().lower() == selected_key
-                ):
-                    for file_url in order.get("file_urls", []):
-                        file_name = file_url.split("/")[-1]
-                        st.write(f"🟢 Downloading: {file_name}")
-                        file_data = download_from_url(file_url)
-                        if not file_data:
-                            st.error(f"Failed to download {file_name}")
-                            continue
+            st.info("No pending orders found.")
+        for order in orders:
+            if order.get("order_type") != "Purchase Order":
+                continue
+            if order.get("client", '').strip().lower() != selected_key:
+                continue
 
-                        try:
-                            if selected_key == "goodsmart":
-                                processed_excel, delivery_date_str = generate_invoice_excel(
-                                    excel_bytes=file_data,
-                                    invoice_number=invoice_number,
-                                    delivery_date=order.get("delivery_date"),
-                                    po_value=order.get("po_number", "N/A")
-                                )
-                                invoice_number += 1
+            for file_url in order.get("file_urls", []):
+                file_name = os.path.basename(file_url)
+                st.write(f"🟢 Processing: {file_name}")
+                data = download_from_url(file_url)
+                try:
+                    # --- goodsmart ---
+                    if selected_key == "goodsmart":
+                        excel_bytes, d_date = generate_invoice_excel(
+                            excel_bytes=data,
+                            invoice_number=invoice_number,
+                            delivery_date=order.get("delivery_date"),
+                            po_value=order.get("po_number")
+                        )
+                        invoice_number += 1
+                        mark_purchase_order_done("GoodsMart", order.get("delivery_date"), order.get("city"))
+                        for otype in ["Invoice", "Job Order"]:
+                            upload_order_and_metadata(
+                                file_bytes=excel_bytes,
+                                filename=f"GoodsMart_{otype}_{d_date}.xlsx",
+                                client="GoodsMart",
+                                order_type=otype,
+                                order_date=order.get("order_date"),
+                                delivery_date=order.get("delivery_date"),
+                                po_number=order.get("po_number"),
+                                city=order.get("city")
+                            )
 
-                                mark_purchase_order_done(
-                                    client="GoodsMart",
-                                    delivery_date=order.get("delivery_date"),
-                                    city=order.get("city")
-                                )
+                    # --- halan ---
+                    elif selected_key == "halan":
+                        excel_bytes, d_date = build_master_and_invoices_bytes(
+                            excel_bytes=data,
+                            invoice_number=invoice_number,
+                            delivery_date=order.get("delivery_date"),
+                            po_value=order.get("po_number")
+                        )
+                        invoice_number += 4
+                        mark_purchase_order_done("Halan", order.get("delivery_date"), order.get("city"))
+                        for otype in ["Invoice", "Job Order"]:
+                            upload_order_and_metadata(
+                                file_bytes=excel_bytes,
+                                filename=f"Halan_{d_date}_{otype.replace(' ', '_')}.xlsx",
+                                client="Halan",
+                                order_type=otype,
+                                order_date=order.get("order_date"),
+                                delivery_date=order.get("delivery_date"),
+                                po_number=order.get("po_number"),
+                                city=order.get("city")
+                            )
 
-                                # Upload as Invoice
-                                upload_order_and_metadata(
-                                    file_bytes=processed_excel,
-                                    filename=f"GoodsMart_Invoice_{delivery_date_str}.xlsx",
-                                    client="GoodsMart",
-                                    order_type="Invoice",
-                                    order_date=order["order_date"],
-                                    delivery_date=order["delivery_date"],
-                                    po_number=order.get("po_number"),
-                                    city=order.get("city")
-                                )
-
-                                # Upload again as Job Order (with different name)
-                                upload_order_and_metadata(
-                                    file_bytes=processed_excel,
-                                    filename=f"GoodsMart_JobOrder_{delivery_date_str}.xlsx",
-                                    client="GoodsMart",
-                                    order_type="Job Order",
-                                    order_date=order["order_date"],
-                                    delivery_date=order["delivery_date"],
-                                    po_number=order.get("po_number"),
-                                    city=order.get("city")
-                                )
-
-
-                            elif selected_key == "khateer":
-                                output_zip_bytes, file_index = rabbitInvoices(
-                                    file_data,
-                                    invoice_number,
-                                    order["delivery_date"],
-                                    branches_translation={
+                    # --- khateer & rabbit reuse rabbitInvoices ---
+                    elif selected_key in ("khateer", "rabbit"):
+                        zip_bytes, idx = rabbitInvoices(
+                            data,
+                            invoice_number,
+                            order.get("delivery_date"),
+                            branches_translation={
                                         "ميفيدا": "Mevida",
                                         "فرع المعادي": "MAADI",
                                         "فرع الدقي": "MOHANDSEEN",
@@ -270,253 +223,91 @@ if st.button("Download Pending Orders"):
                                         "فرع سوديك": "Sodic",
                                         "مدينتي": "Madinaty"
                                     }
-                                )
+                        )
+                        invoice_number += idx + 1
+                        z = ZipFile(BytesIO(zip_bytes))
+                        inner = None; excels = []
+                        for n in z.namelist():
+                            c = z.read(n)
+                            if n.lower().endswith('.zip'): inner = c
+                            elif n.lower().endswith('.xlsx'): excels.append((n,c))
+                        if inner:
+                            upload_order_and_metadata(inner, f"{selected_client}_Invoice_{order['delivery_date']}.zip",
+                                                      selected_client, "Invoice", order['order_date'], order['delivery_date'], order.get('po_number'), order.get('city'))
+                        if excels:
+                            newz = BytesIO()
+                            with ZipFile(newz,'w') as z2:
+                                for n,c in excels: z2.writestr(n,c)
+                            mark_purchase_order_done(selected_client.title(), order.get("delivery_date"), order.get("city"))
+                            upload_order_and_metadata(newz.getvalue(), f"{selected_client}_JobOrder_{order['delivery_date']}.zip",
+                                                      selected_client, "Job Order", order['order_date'], order['delivery_date'], order.get('po_number'), order.get('city'))
 
-                                invoice_number += file_index + 1
+                    # --- talabat ---
+                    elif selected_key == "talabat":
+                        d_date = order.get("delivery_date")
+                        zip_bytes, offset = process_talabat_invoices(
+                            zip_file_bytes=data,
+                            invoice_date=d_date,
+                            base_invoice_number=invoice_number,
+                            translation_dict=translation_dict,
+                            categories_dict=categories_dict,
+                            branches_dict=branches_dict,
+                            branches_translation_tlbt=branches_translation_tlbt,
+                            columns=columns
+                        )
+                        invoice_number += offset
+                        z = ZipFile(BytesIO(zip_bytes))
+                        inner = None; excels = []
+                        for n in z.namelist():
+                            c = z.read(n)
+                            if n.lower().endswith('.zip'): inner = c
+                            elif n.lower().endswith('.xlsx'): excels.append((n,c))
+                        if inner:
+                            upload_order_and_metadata(inner, f"Talabat_Invoice_{d_date}.zip",
+                                                      "Talabat", "Invoice", order['order_date'], d_date, order.get('po_number'), order.get('city'))
+                        if excels:
+                            newz = BytesIO()
+                            with ZipFile(newz,'w') as z2:
+                                for n,c in excels: z2.writestr(n,c)
+                            mark_purchase_order_done("Talabat", d_date, order.get("city"))
+                            upload_order_and_metadata(newz.getvalue(), f"Talabat_JobOrder_{d_date}.zip",
+                                                      "Talabat", "Job Order", order['order_date'], d_date, order.get('po_number'), order.get('city'))
 
-                                # Split inner zip and Excel files
-                                original_zip = ZipFile(BytesIO(output_zip_bytes))
-                                inner_zip_bytes = None
-                                excel_files = []
+                    # --- breadfast ---
+                    elif selected_key == "breadfast":
+                        city = order.get("city")
+                        d_date = order.get("delivery_date")
+                        zip_bytes = process_breadfast_invoice(
+                            city=city,
+                            pdf_file_bytes=data,
+                            invoice_number=invoice_number,
+                            delivery_date_str=d_date
+                        )
+                        invoice_number += (1 if city == "Mansoura" else 2)
+                        z = ZipFile(BytesIO(zip_bytes))
+                        jobf = []; invf = []
+                        for n in z.namelist():
+                            c = z.read(n)
+                            if 'مجمع' in n: jobf.append((n,c))
+                            else: invf.append((n,c))
+                        if jobf:
+                            jz = BytesIO()
+                            with ZipFile(jz,'w') as z2:
+                                for n,c in jobf: z2.writestr(n,c)
+                            upload_order_and_metadata(jz.getvalue(), f"Breadfast_JobOrder_{city}_{d_date}.zip",
+                                                      "Breadfast", "Job Order", order['order_date'], d_date, order.get('po_number'), city)
+                        if invf:
+                            iz = BytesIO()
+                            with ZipFile(iz,'w') as z2:
+                                for n,c in invf: z2.writestr(n,c)
+                            upload_order_and_metadata(iz.getvalue(), f"Breadfast_Invoices_{city}_{d_date}.zip",
+                                                      "Breadfast", "Invoice", order['order_date'], d_date, order.get('po_number'), city)
+                        mark_purchase_order_done("Breadfast", d_date, city)
 
-                                for name in original_zip.namelist():
-                                    content = original_zip.read(name)
-                                    if name.lower().endswith(".zip"):
-                                        inner_zip_bytes = content
-                                    elif name.lower().endswith(".xlsx"):
-                                        excel_files.append((name, content))
+                except Exception as e:
+                    st.error(f"Error processing {file_name}: {e}")
 
-                                if inner_zip_bytes:
-                                    upload_order_and_metadata(
-                                        file_bytes=inner_zip_bytes,
-                                        filename=f"Khateer_Invoice_{order['delivery_date']}.zip",
-                                        client="Khateer",
-                                        order_type="Invoice",
-                                        order_date=order["order_date"],
-                                        delivery_date=order["delivery_date"],
-                                        po_number=order.get("po_number"),
-                                        city=order.get("city")
-                                    )
-
-                                if excel_files:
-                                    new_zip_io = BytesIO()
-                                    with ZipFile(new_zip_io, mode="w") as zf:
-                                        for fname, content in excel_files:
-                                            zf.writestr(fname, content)
-                                    new_zip_io.seek(0)
-                                    mark_purchase_order_done(client="Khateer", delivery_date=order.get("delivery_date"), city=order.get("city"))
-                                    upload_order_and_metadata(
-                                        file_bytes=new_zip_io.getvalue(),
-                                        filename="Khateer_JobOrder.zip",
-                                        client="Khateer",
-                                        order_type="Job Order",
-                                        order_date=order["order_date"],
-                                        delivery_date=order["delivery_date"],
-                                        po_number=order.get("po_number"),
-                                        city=order.get("city")
-                                    )
-
-                            elif selected_key == "rabbit":
-                                output_zip_bytes, file_index = rabbitInvoices(
-                                    file_data,
-                                    invoice_number,
-                                    order["delivery_date"],
-                                    branches_translation={
-                                        "ميفيدا": "Mevida",
-                                        "فرع المعادي": "MAADI",
-                                        "فرع الدقي": "MOHANDSEEN",
-                                        "فرع الرحاب": "Rehab",
-                                        "فرع التجمع": "TGAMOE",
-                                        "فرع مصر الجديدة": "MASR GEDIDA",
-                                        "فرع مدينة نصر": "Nasr City",
-                                        "اكتوبر٢": "OCTOBER",
-                                        "فرع دريم": "Dream",
-                                        "فرع زايد": "ZAYED",
-                                        "فرع سوديك": "Sodic",
-                                        "مدينتي": "Madinaty"
-                                    }
-                                )
-
-                                invoice_number += file_index + 1
-
-                                # Split inner zip and Excel files
-                                original_zip = ZipFile(BytesIO(output_zip_bytes))
-                                inner_zip_bytes = None
-                                excel_files = []
-
-                                for name in original_zip.namelist():
-                                    content = original_zip.read(name)
-                                    if name.lower().endswith(".zip"):
-                                        inner_zip_bytes = content
-                                    elif name.lower().endswith(".xlsx"):
-                                        excel_files.append((name, content))
-
-                                if inner_zip_bytes:
-                                    upload_order_and_metadata(
-                                        file_bytes=inner_zip_bytes,
-                                        filename=f"Rabbit_Invoice_{order['delivery_date']}.zip",
-                                        client="Rabbit",
-                                        order_type="Invoice",
-                                        order_date=order["order_date"],
-                                        delivery_date=order["delivery_date"],
-                                        po_number=order.get("po_number"),
-                                        city=order.get("city")
-                                    )
-
-                                if excel_files:
-                                    new_zip_io = BytesIO()
-                                    with ZipFile(new_zip_io, mode="w") as zf:
-                                        for fname, content in excel_files:
-                                            zf.writestr(fname, content)
-                                    new_zip_io.seek(0)
-                                    mark_purchase_order_done(client="Rabbit", delivery_date=order.get("delivery_date"), city=order.get("city"))
-                                    upload_order_and_metadata(
-                                        file_bytes=new_zip_io.getvalue(),
-                                        filename=f"Rabbit_JobOrder_{order['delivery_date']}.zip",
-                                        client="Rabbit",
-                                        order_type="Job Order",
-                                        order_date=order["order_date"],
-                                        delivery_date=order["delivery_date"],
-                                        po_number=order.get("po_number"),
-                                        city=order.get("city")
-                                    )
-
-
-                            elif selected_key == "talabat":
-                                delivery_date = order.get("delivery_date")
-                                output_zip_bytes, offset = process_talabat_invoices(
-                                    zip_file_bytes=file_data,
-                                    invoice_date=delivery_date,
-                                    base_invoice_number=invoice_number,
-                                    translation_dict=translation_dict,
-                                    categories_dict=categories_dict,
-                                    branches_dict=branches_dict,
-                                    branches_translation_tlbt=branches_translation_tlbt,
-                                    columns=columns
-                                )
-                                invoice_number = invoice_number + offset
-
-
-                                # --- Step 1: Extract and separate inner ZIP and Excel files ---
-                                original_zip = ZipFile(BytesIO(output_zip_bytes))
-                                inner_zip_bytes = None
-                                excel_files = []
-
-                                for name in original_zip.namelist():
-                                    content = original_zip.read(name)
-                                    if name.lower().endswith(".zip"):
-                                        inner_zip_bytes = content  # Assume only one inner zip
-                                    elif name.lower().endswith(".xlsx"):
-                                        excel_files.append((name, content))
-
-                                # --- Step 2: Upload inner ZIP as Invoice ---
-                                if inner_zip_bytes:
-                                    upload_order_and_metadata(
-                                        file_bytes=inner_zip_bytes,
-                                        filename=f"Talabat_Invoice_{delivery_date}.zip",
-                                        client="Talabat",
-                                        order_type="Invoice",
-                                        order_date=order["order_date"],
-                                        delivery_date=delivery_date,
-                                        po_number=order.get("po_number"),
-                                        city=order.get("city")
-                                    )
-
-                                # --- Step 3: Re-zip the Excel files and upload as Job Order ---
-                                if excel_files:
-                                    new_zip_io = BytesIO()
-                                    with ZipFile(new_zip_io, mode="w") as zf:
-                                        for fname, content in excel_files:
-                                            zf.writestr(fname, content)
-                                    new_zip_io.seek(0)
-                                    mark_purchase_order_done(client="Talabat", delivery_date=order.get("delivery_date"), city=order.get("city"))
-                                    upload_order_and_metadata(
-                                        file_bytes=new_zip_io.getvalue(),
-                                        filename=f"Talabat_JobOrder_{delivery_date}.zip",
-                                        client="Talabat",
-                                        order_type="Job Order",
-                                        order_date=order["order_date"],
-                                        delivery_date=delivery_date,
-                                        po_number=order.get("po_number"),
-                                        city=order.get("city")
-                                    )
-                            elif selected_key == "breadfast":
-                                city = order.get("city")
-                                delivery_date_str = order.get("delivery_date")
-
-                                output_zip_bytes = process_breadfast_invoice(
-                                    city=city,
-                                    pdf_file_bytes=file_data,
-                                    invoice_number=invoice_number,
-                                    delivery_date_str=delivery_date_str
-                                )
-
-                                if city == "Mansoura":
-                                    invoice_number += 1
-                                else:
-                                    invoice_number += 2
-
-                                # Split Excel files from ZIP based on name
-                                zip_file = ZipFile(BytesIO(output_zip_bytes))
-                                job_order_files = []
-                                invoice_files = []
-
-                                for name in zip_file.namelist():
-                                    if not name.lower().endswith(".xlsx"):
-                                        continue
-                                    content = zip_file.read(name)
-                                    if "مجمع" in name:
-                                        job_order_files.append((name, content))
-                                    else:
-                                        invoice_files.append((name, content))
-
-                                # Upload job order files (together as one ZIP)
-                                if job_order_files:
-                                    job_zip_io = BytesIO()
-                                    with ZipFile(job_zip_io, mode="w") as zf:
-                                        for fname, content in job_order_files:
-                                            zf.writestr(fname, content)
-                                    job_zip_io.seek(0)
-
-                                    upload_order_and_metadata(
-                                        file_bytes=job_zip_io.getvalue(),
-                                        filename=f"Breadfast_JobOrder_{city}_{delivery_date_str}.zip",
-                                        client="Breadfast",
-                                        order_type="Job Order",
-                                        order_date=order["order_date"],
-                                        delivery_date=order["delivery_date"],
-                                        city=city
-                                    )
-
-                                # Upload all invoice files in a single ZIP (safe)
-                                if invoice_files:
-                                    invoice_zip_io = BytesIO()
-                                    with ZipFile(invoice_zip_io, mode="w") as zf:
-                                        for fname, content in invoice_files:
-                                            zf.writestr(fname, content)
-                                    invoice_zip_io.seek(0)
-
-                                    upload_order_and_metadata(
-                                        file_bytes=invoice_zip_io.getvalue(),
-                                        filename=f"Breadfast_Invoices_{city}_{delivery_date_str}.zip",
-                                        client="Breadfast",
-                                        order_type="Invoice",
-                                        order_date=order["order_date"],
-                                        delivery_date=order["delivery_date"],
-                                        city=city
-                                    )
-
-                                mark_purchase_order_done(
-                                    client="Breadfast",
-                                    delivery_date=order.get("delivery_date"),
-                                    city=order.get("city")
-                                )
-
-
-
-                        except Exception as e:
-                            st.error(f"Error processing {file_name}: {e}")
-
-            df_invoice_number.iat[0, 0] = invoice_number
-            conn.update(worksheet="Saved", data=df_invoice_number)
-            st.success("✅ Finished processing all orders.")
+        # --- Update Invoice Number in Sheet ---
+        df_inv.iat[0, 0] = invoice_number
+        conn.update(worksheet="Saved", data=df_inv)
+        st.success("✅ Finished processing all orders.")
