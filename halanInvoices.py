@@ -12,23 +12,38 @@ def build_master_and_invoices_bytes(
     """
     Takes Excel bytes input and generates a master summary sheet plus 8 invoice sheets,
     returning the result as an in-memory Excel file (bytes) and the delivery date.
+    
+    Column positions are now fixed:
+      - col 0: Barcode
+      - col 2: Product name
+      - col 4: Qty (named by sheet)
+      - col -2: Price
+
+    Handles variant sheet names for the Haram Gardens branch:
+      both 'حدائق الاهرام' and 'حدايق الاهرام' map to 'حدائق الاهرام'.
     """
+    # mapping of alternate sheet names to canonical
+    name_map = {
+        'حدايق الاهرام': 'حدائق الاهرام',
+    }
+
     xls = pd.ExcelFile(BytesIO(excel_bytes))
-    sheets = [s.strip() for s in xls.sheet_names]
+    # normalize sheet names
+    sheets = [name_map.get(s.strip(), s.strip()) for s in xls.sheet_names]
     dfs = []
 
     for orig in xls.sheet_names:
-        name = orig.strip()
+        raw = orig.strip()
+        name = name_map.get(raw, raw)
         df = pd.read_excel(xls, sheet_name=orig)
         df.columns = [c.strip() for c in df.columns]
 
-        qty_col = name if name in df.columns else next(c for c in df.columns if name in c)
-        price_col = df.columns[-2]
-
-        tmp = df[['Barcode', 'Product name', qty_col, price_col]].copy()
-        tmp.rename(columns={qty_col: name, price_col: f'price_{name}'}, inplace=True)
+        # select by position: 0,1,4,-2
+        tmp = df.iloc[:, [0, 2, 4, -2]].copy()
+        tmp.columns = ['Barcode', 'Product name', name, f'price_{name}']
         dfs.append(tmp)
 
+    # merge on Barcode & Product name
     merged = reduce(
         lambda a, b: pd.merge(a, b, on=['Barcode', 'Product name'], how='outer'),
         dfs
@@ -43,6 +58,7 @@ def build_master_and_invoices_bytes(
         .fillna(0)
     )
 
+    # compute price, totals
     merged['price'] = merged[price_cols].max(axis=1)
     merged['total qty'] = merged[qty_cols].sum(axis=1)
     merged['grand total'] = merged['total qty'] * merged['price']
@@ -66,6 +82,7 @@ def build_master_and_invoices_bytes(
     wb = writer.book
     merged.to_excel(writer, sheet_name='Summary', index=False)
 
+    # formats
     meta_fmt = wb.add_format({'bold': True, 'border': 2})
     bold_center = wb.add_format({'bold': True, 'align': 'center'})
     bold_merge = wb.add_format({'bold': True, 'border': 2, 'align': 'center', 'valign': 'vcenter'})
