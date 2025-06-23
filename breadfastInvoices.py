@@ -12,7 +12,7 @@ from openpyxl.styles import Border, Side, Alignment, Font
 from openpyxl.drawing.image import Image
 from openpyxl.utils import get_column_letter
 
-from config import barcode_to_product, categories_dict
+from config import barcode_to_product, categories_dict, ids_to_products
 
 def process_breadfast_invoice(
     city: str,
@@ -74,7 +74,7 @@ def process_breadfast_invoice(
                 return ""
 
         df["Barcode"] = df["Barcode"].apply(to_int_or_empty)
-        df["Product Name"] = df["Barcode"].astype(str).map(barcode_to_product).fillna("غير معروف")
+        df["Product Name"] = df["ID"].astype(str).map(ids_to_products).fillna("غير معروف")
         df["فرع"] = branch_name
 
         return df
@@ -107,7 +107,7 @@ def process_breadfast_invoice(
                 return ""
 
         df["Barcode"] = df["Barcode"].apply(to_int_or_empty)
-        df["Product Name"] = df["Barcode"].astype(str).map(barcode_to_product).fillna("غير معروف")
+        df["Product Name"] = df["ID"].astype(str).map(ids_to_products).fillna("غير معروف")
         df["فرع"] = "المنصورة"
 
         return df
@@ -115,7 +115,7 @@ def process_breadfast_invoice(
     def create_pivot_excel_alex(df: pd.DataFrame) -> BytesIO:
         # Pivot for Alexandria: branches "لوران" and "سموحة"
         pivot_df = df.pivot_table(
-            index=["Barcode", "Product Name", "pp"],
+            index=["ID", "Barcode", "Product Name", "pp"],
             columns="فرع",
             values="Quantity",
             aggfunc="sum",
@@ -131,7 +131,7 @@ def process_breadfast_invoice(
         pivot_df["total"] = pivot_df["total_quantity"] * pivot_df["pp"]
 
         # Reorder columns
-        pivot_df = pivot_df[["Barcode", "Product Name", "لوران", "سموحة", "total_quantity", "pp", "total"]]
+        pivot_df = pivot_df[["ID", "Barcode", "Product Name", "لوران", "سموحة", "total_quantity", "pp", "total"]]
 
         # Map categories
         product_to_category = {product: cat for cat, products in categories_dict.items() for product in products}
@@ -165,7 +165,7 @@ def process_breadfast_invoice(
     def create_pivot_excel_mansoura(df: pd.DataFrame) -> BytesIO:
         # Pivot for Mansoura: single branch "المنصورة"
         pivot_df = df.pivot_table(
-            index=["Barcode", "Product Name", "pp"],
+            index=["ID", "Barcode", "Product Name", "pp"],
             columns="فرع",
             values="Quantity",
             aggfunc="sum",
