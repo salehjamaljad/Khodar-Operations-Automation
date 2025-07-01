@@ -39,7 +39,7 @@ def build_master_and_invoices_bytes(
         df.columns = [c.strip() for c in df.columns]
 
         # select by position: 0,1,4,-2
-        tmp = df.iloc[:, [0, 3, 4, -2]].copy()
+        tmp = df.iloc[:, [0, -4, -3, -2]].copy()
         tmp.columns = ['Barcode', 'Product name', name, f'price_{name}']
         dfs.append(tmp)
 
