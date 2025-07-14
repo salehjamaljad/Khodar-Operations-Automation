@@ -485,6 +485,7 @@ branches_dict = {
         "EG_Cairo_DS_37_Tagamoa-Awal": "التجمع الاول",
         "EG_Cairo_DS_8": "مدينة نصر",
         "EG_faisal_DS_42": "فيصل",
+        "EG_Faisal Maryoteya (2)_DS_54": "فيصل 2 مريوطية",
         "EG_Hadayek October_DS_44": "حدائق اكتوبر",
         "EG_Ismailia_DS_34": "الاسماعيليه",
         "EG_Madinaty Craft_DS_39": "مدينتي كرافت",
@@ -510,7 +511,7 @@ branches_dict = {
 
 special_codes = {
         "EG_Alex East_DS_", "EG_Alex", "EG_Zahraa Maadi", "EG_Nasrcity", "EG_Mansoura", 
-        "EG_Tagamoa Golden", "EG_Tagamoa", "EG_Madinaty", "EG_Hadayek", "EG_October", "EG_Shrouk_", "EG_Mokatam", "EG_Sheikh"
+        "EG_Tagamoa Golden", "EG_Tagamoa", "EG_Madinaty", "EG_Hadayek", "EG_October", "EG_Shrouk_", "EG_Mokatam", "EG_Sheikh", "EG_Faisal"
     }
 
 
