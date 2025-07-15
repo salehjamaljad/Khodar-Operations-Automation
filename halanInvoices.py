@@ -57,7 +57,7 @@ def build_master_and_invoices_bytes(
     merged['Barcode'] = merged['Barcode'].astype(float).map('{:.0f}'.format)
 
     # only include the fixed branches that actually appeared
-    branch_order = ['مدينه نصر','حدائق الاهرام','جسر السويس','المقطم', 'اكتوبر']
+    branch_order = ['اكتوبر','جسر السويس','المقطم','حدائق الاهرام', 'مدينه نصر']
     present = [b for b in branch_order if b in sheets]
 
     final_cols = ['Barcode','Product name'] + present + ['total qty','price','grand total']
