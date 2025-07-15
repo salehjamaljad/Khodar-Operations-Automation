@@ -430,6 +430,7 @@ branches_translation_tlbt = {
     "التجمع الاول": "TAGMOE AWAL",
     "مدينة نصر": "Nasr City",
     "فيصل": "Fesal",
+    "فيصل 2 مريوطية": "Fesal 2",
     "حدائق اكتوبر": "Hadayek October",
     "الاسماعيليه": "ismailia",
     "مدينتي كرافت": "Madinaty Craft",
