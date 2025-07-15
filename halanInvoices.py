@@ -16,7 +16,7 @@ def build_master_and_invoices_bytes(
         * فاتورة {branch}_filled
     - Normalizes:
         'حدايق الاهرام' → 'حدائق الاهرام'
-        'مدينة نصر'   → 'مدينه نصر'
+        'مدينة نصر'   → 'مدينه نصر '
     - Skips missing branches without consuming invoice/PO slots.
     """
 
