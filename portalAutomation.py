@@ -189,7 +189,7 @@ if st.button("Generate Job Orders & Invoices"):
                             delivery_date=order.get("delivery_date"),
                             po_value=order.get("po_number")
                         )
-                        invoice_number += 4
+                        invoice_number += 5
                         mark_purchase_order_done("Halan", order.get("delivery_date"), order.get("city"))
                         for otype in ["Invoice", "Job Order"]:
                             upload_order_and_metadata(
