@@ -16,7 +16,7 @@ def build_master_and_invoices_bytes(
         * فاتورة {branch}_filled
     - Normalizes:
         'حدايق الاهرام' → 'حدائق الاهرام'
-        'مدينة نصر'   → 'مدينه نصر '
+        'مدينة نصر'   → 'مدينه نصر'
     - Skips missing branches without consuming invoice/PO slots.
     """
 
@@ -27,8 +27,8 @@ def build_master_and_invoices_bytes(
     }
 
     xls = pd.ExcelFile(BytesIO(excel_bytes))
-    raw_sheets = [s.strip() for s in xls.sheet_names]
-    sheets     = [name_map.get(s, s) for s in raw_sheets]
+    raw_sheets = xls.sheet_names
+    sheets = [name_map.get(s.strip(), s.strip()) for s in raw_sheets]
 
     # read each sheet into small df
     dfs = []
@@ -57,7 +57,7 @@ def build_master_and_invoices_bytes(
     merged['Barcode'] = merged['Barcode'].astype(float).map('{:.0f}'.format)
 
     # only include the fixed branches that actually appeared
-    branch_order = ['اكتوبر','جسر السويس','المقطم','حدائق الاهرام', 'مدينه نصر']
+    branch_order = ['مدينه نصر','حدائق الاهرام','المقطم','جسر السويس', 'اكتوبر']
     present = [b for b in branch_order if b in sheets]
 
     final_cols = ['Barcode','Product name'] + present + ['total qty','price','grand total']
