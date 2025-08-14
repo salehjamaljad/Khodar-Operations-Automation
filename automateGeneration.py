@@ -59,8 +59,9 @@ logging.basicConfig(level=LOG_LEVEL, format="%(asctime)s %(levelname)s %(message
 logger = logging.getLogger(__name__)
 
 # --- Environment & Supabase Setup ---
-SUPABASE_URL = os.getenv("https://rabwvltxgpdyvpmygdtc.supabase.co")
-SUPABASE_API_KEY = os.getenv("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhYnd2bHR4Z3BkeXZwbXlnZHRjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkyMzg4MTQsImV4cCI6MjA2NDgxNDgxNH0.hnQYr3jL0rLTNOGXE0EgF9wmd_bynff6JXtqwjCOc6Y")
+# CORRECT: getenv the variable NAMES
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_API_KEY = os.getenv("SUPABASE_API_KEY")
 STORAGE_BUCKET = os.getenv("SUPABASE_STORAGE_BUCKET", "order_files")
 TABLE_NAME = os.getenv("SUPABASE_TABLE_NAME", "orders")
 
