@@ -4,7 +4,9 @@ from io import BytesIO
 from zipfile import ZipFile
 from typing import Optional
 from datetime import datetime
+import json
 import requests
+import gspread
 
 from goodsmartInvoices import generate_invoice_excel
 from halanInvoices import build_master_and_invoices_bytes
@@ -19,7 +21,7 @@ from config import (
     columns
 )
 
-# Supabase Configuration (copied from your Streamlit app)
+# === Supabase Configuration ===
 SUPABASE_URL = "https://rabwvltxgpdyvpmygdtc.supabase.co"
 API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhYnd2bHR4Z3BkeXZwbXlnZHRjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkyMzg4MTQsImV4cCI6MjA2NDgxNDgxNH0.hnQYr3jL0rLTNOGXE0EgF9wmd_bynff6JXtqwjCOc6Y"
 AUTHORIZATION = f"Bearer {API_KEY}"
@@ -32,10 +34,16 @@ SUPABASE_HEADERS = {
     "authorization": AUTHORIZATION
 }
 
-# Google Sheets connection (same as in your app)
-from streamlit_gsheets import GSheetsConnection
-conn = GSheetsConnection()
-df_inv = conn.read(worksheet="Saved", cell="A1", ttl=5, headers=False)
+# === Google Sheets Connection (gspread, using service account JSON from env var) ===
+# Make sure in GitHub Actions you set GSHEET_SERVICE_ACCOUNT_JSON to the full JSON of your service account
+service_account_info = json.loads(os.environ["GSHEET_SERVICE_ACCOUNT_JSON"])
+gc = gspread.service_account_from_dict(service_account_info)
+
+# Replace with your actual spreadsheet name
+SPREADSHEET_NAME = "YOUR_SPREADSHEET_NAME"
+worksheet = gc.open(SPREADSHEET_NAME).worksheet("Saved")
+
+df_inv = worksheet.get_all_values()
 
 # --- Helpers ---
 def mark_purchase_order_done(client: str, delivery_date: str, city: Optional[str] = None):
@@ -286,11 +294,10 @@ def process_client(selected_key: str, invoice_number: int) -> int:
 
 if __name__ == "__main__":
     clients = ["goodsmart", "halan", "khateer", "rabbit", "breadfast", "talabat"]
-    invoice_number = int(df_inv.iat[0, 0])
+    invoice_number = int(df_inv[0][0])  # first cell A1
     for client in clients:
         print(f"=== Processing {client} ===")
         invoice_number = process_client(client, invoice_number)
         time.sleep(60)  # wait 1 minute before next client
-    df_inv.iat[0, 0] = invoice_number
-    conn.update(worksheet="Saved", data=df_inv)
+    worksheet.update("A1", [[invoice_number]])
     print("✅ Finished processing all clients.")
