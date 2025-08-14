@@ -40,7 +40,7 @@ service_account_info = json.loads(os.environ["GSHEET_SERVICE_ACCOUNT_JSON"])
 gc = gspread.service_account_from_dict(service_account_info)
 
 # Replace with your actual spreadsheet name
-SPREADSHEET_NAME = "YOUR_SPREADSHEET_NAME"
+SPREADSHEET_NAME = "Khodar Pricing Control"
 worksheet = gc.open(SPREADSHEET_NAME).worksheet("Saved")
 
 df_inv = worksheet.get_all_values()
