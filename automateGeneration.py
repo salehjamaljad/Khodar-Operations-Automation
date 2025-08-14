@@ -1,30 +1,3 @@
-#!/usr/bin/env python3
-"""
-automateGeneration.py
-
-Runs the same processing logic as your Streamlit "Generate Job Orders & Invoices" button
-for each client in sequence, waiting 60 seconds between clients.
-Intended to be executed from CI (GitHub Actions) or cron.
-
-REQUIRES these environment variables (set them in GitHub Secrets or CI env):
-- SUPABASE_URL
-- SUPABASE_API_KEY
-- SUPABASE_STORAGE_BUCKET (optional; default from code below)
-- SUPABASE_TABLE_NAME (optional; default "orders")
-- GSHEET_SERVICE_ACCOUNT_JSON  -> base64-encoded service account JSON OR raw JSON string
-- GSHEET_SPREADSHEET_ID
-- GSHEET_SHEET_NAME (optional; default "Saved")
-- OPTIONAL: LOG_LEVEL (DEBUG/INFO; default INFO)
-
-Your repo must contain the processing modules:
-- goodsmartInvoices.generate_invoice_excel
-- halanInvoices.build_master_and_invoices_bytes
-- rabbitInvoices.rabbitInvoices
-- pdfsToExcels.process_talabat_invoices
-- breadfastInvoices.process_breadfast_invoice
-and your config module with translation_dict, categories_dict, branches_dict, branches_translation_tlbt, columns
-"""
-
 import os
 import time
 import json
@@ -60,10 +33,10 @@ logger = logging.getLogger(__name__)
 
 # --- Environment & Supabase Setup ---
 # CORRECT: getenv the variable NAMES
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_API_KEY = os.getenv("SUPABASE_API_KEY")
-STORAGE_BUCKET = os.getenv("SUPABASE_STORAGE_BUCKET", "order_files")
-TABLE_NAME = os.getenv("SUPABASE_TABLE_NAME", "orders")
+SUPABASE_URL = "https://rabwvltxgpdyvpmygdtc.supabase.co"
+SUPABASE_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJhYnd2bHR4Z3BkeXZwbXlnZHRjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkyMzg4MTQsImV4cCI6MjA2NDgxNDgxNH0.hnQYr3jL0rLTNOGXE0EgF9wmd_bynff6JXtqwjCOc6Y"
+STORAGE_BUCKET = "order_files"
+TABLE_NAME = "orders"
 
 if not SUPABASE_URL or not SUPABASE_API_KEY:
     logger.error("Missing SUPABASE_URL or SUPABASE_API_KEY environment variables.")
