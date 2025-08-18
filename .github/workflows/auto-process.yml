@@ -1,7 +1,9 @@
 name: Auto Generation
 
 on:
-  workflow_dispatch:
+  schedule:
+    - cron: '51 * * * *'   # Every hour at minute 44
+  workflow_dispatch:          # Manual trigger
 
 jobs:
   run-automation:
