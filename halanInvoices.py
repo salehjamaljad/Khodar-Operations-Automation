@@ -57,6 +57,7 @@ def build_master_and_invoices_bytes(
     merged['Barcode'] = merged['Barcode'].astype(float).map('{:.0f}'.format)
 
     # only include the fixed branches that actually appeared
+    branch_order = ['مدينه نصر','حدائق الاهرام','المقطم','جسر السويس', 'اكتوبر']
     branch_order = ['مدينه نصر','حدائق الاهرام','جسر السويس','المقطم', 'اكتوبر']
     present = [b for b in branch_order if b in sheets]
 
@@ -169,6 +170,3 @@ def build_master_and_invoices_bytes(
     writer.close()
     out.seek(0)
     return out.getvalue(), delivery_date
-
-
-
