@@ -35,8 +35,14 @@ def build_master_and_invoices_bytes(
     for orig_name, norm in zip(raw_sheets, sheets):
         df = pd.read_excel(xls, sheet_name=orig_name)
         df.columns = [c.strip() for c in df.columns]
+    
+        # take needed columns
         small = df.iloc[:, [0, -4, -3, -2]].copy()
         small.columns = ['Barcode', 'Product name', norm, f'price_{norm}']
+    
+        # enforce consistent type for merge keys
+        small['Product name'] = small['Product name'].astype(str).str.strip()
+    
         dfs.append(small)
 
     # build the master summary
@@ -170,3 +176,4 @@ def build_master_and_invoices_bytes(
     writer.close()
     out.seek(0)
     return out.getvalue(), delivery_date
+
