@@ -35,7 +35,7 @@ def build_master_and_invoices_bytes(
     for orig_name, norm in zip(raw_sheets, sheets):
         df = pd.read_excel(xls, sheet_name=orig_name)
         df.columns = [c.strip() for c in df.columns]
-        small = df.iloc[:, [0, -4, -3, -2]].copy()
+        small = df.iloc[:, [0, -5, -2, -4]].copy()
         small.columns = ['Barcode', 'Product name', norm, f'price_{norm}']
         dfs.append(small)
 
@@ -170,3 +170,4 @@ def build_master_and_invoices_bytes(
     writer.close()
     out.seek(0)
     return out.getvalue(), delivery_date
+
