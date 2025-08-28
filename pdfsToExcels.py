@@ -379,13 +379,25 @@ def process_talabat_invoices(
             cairo_df = add_total_and_sort(cairo_df)
 
             def append_grand_total(df):
-                if not {"total quantity", "PP", "total"}.issubset(df.columns):
+                # requires pandas imported as pd
+                required = {"total quantity", "PP", "total"}
+                if not required.issubset(df.columns):
                     return df
+
                 cols = df.columns.tolist()
-                product_name_idx = cols.index("Product name")
-                pp_idx = cols.index("PP")
+                try:
+                    product_name_idx = cols.index("Product name")
+                    pp_idx = cols.index("PP")
+                except ValueError:
+                    return df
+
                 sum_columns = cols[product_name_idx + 1 : pp_idx]
 
+                # compute number of columns with at least one non-null value (from the original df)
+                num_nonempty_cols = int(df.notna().any(axis=0).sum())
+                branches_count = max(0, num_nonempty_cols - 7)  # ensure non-negative integer
+
+                # build grand total row
                 grand_total_row = {col: "" for col in df.columns}
                 grand_total_row["Product name"] = "Grand Total"
 
@@ -398,7 +410,37 @@ def process_talabat_invoices(
                 grand_total_row["total"] = df["total"].sum()
 
                 df = pd.concat([df, pd.DataFrame([grand_total_row])], ignore_index=True)
+
+                # build branch count row (عدد الفروع)
+                branch_row = {col: "" for col in df.columns}
+                branch_row["Product name"] = "عدد الفروع"
+
+                # choose a sensible column to place the branches_count:
+                target_col = None
+                # prefer first numeric column in sum_columns
+                for col in sum_columns:
+                    if pd.api.types.is_numeric_dtype(df[col]):
+                        target_col = col
+                        break
+                # fallback to "total quantity"
+                if target_col is None and "total quantity" in df.columns and pd.api.types.is_numeric_dtype(df["total quantity"]):
+                    target_col = "total quantity"
+                # fallback to any numeric column
+                if target_col is None:
+                    for col in df.columns:
+                        if pd.api.types.is_numeric_dtype(df[col]):
+                            target_col = col
+                            break
+                # last resort: put into the first column after Product name (may be non-numeric)
+                if target_col is None:
+                    after_product_idx = product_name_idx + 1
+                    target_col = cols[after_product_idx] if after_product_idx < len(cols) else df.columns[-1]
+
+                branch_row[target_col] = int(branches_count)
+
+                df = pd.concat([df, pd.DataFrame([branch_row])], ignore_index=True)
                 return df
+
 
             alexandria_df = alexandria_df[alexandria_df["total"] != 0]
             ready_veg_df = ready_veg_df[ready_veg_df["total"] != 0]
