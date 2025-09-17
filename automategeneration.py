@@ -7,7 +7,6 @@ from datetime import datetime
 import json
 import requests
 import gspread
-import pandas as pd
 
 from goodsmartInvoices import generate_invoice_excel
 from halanInvoices import build_master_and_invoices_bytes
@@ -331,8 +330,8 @@ def process_client(selected_key: str, invoice_number: int) -> int:
 
 
 if __name__ == "__main__":
-    clients = ["Khateer", "goodsmart", "halan",  "rabbit", "breadfast", "talabat"]
-    invoice_number = int(df_inv.iloc[0]['next'][0])
+    clients = ["goodsmart", "halan", "Khateer", "rabbit", "breadfast", "talabat"]
+    invoice_number = int(df_inv.iloc[1, 0])  # A2
     for client in clients:
         print(f"=== Processing {client} ===")
         invoice_number = process_client(client, invoice_number)
