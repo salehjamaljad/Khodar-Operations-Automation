@@ -337,6 +337,6 @@ if __name__ == "__main__":
     for client in clients:
         print(f"=== Processing {client} ===")
         invoice_number = process_client(client, invoice_number)
-        time.sleep(60)  # wait 1 minute before next client
+        time.sleep(5)  # wait 1 minute before next client
     worksheet.update("A2", [[invoice_number]])
     print("✅ Finished processing all clients.")
