@@ -115,8 +115,11 @@ def upload_order_and_metadata(
         headers={"apikey": API_KEY, "authorization": AUTHORIZATION, "content-type": "application/json", "prefer": "return=representation"},
         json=payload
     )
-    ins.raise_for_status()
+    if not ins.ok:
+        print("Supabase insert failed:", ins.status_code, ins.text)
+        ins.raise_for_status()
     return ins.json()
+
 
 
 def fetch_pending_orders():
