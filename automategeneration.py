@@ -332,7 +332,7 @@ def process_client(selected_key: str, invoice_number: int) -> int:
 
 if __name__ == "__main__":
     clients = ["Khateer", "goodsmart", "halan",  "rabbit", "breadfast", "talabat"]
-    invoice_number = int(df_inv.iloc[0]['next'])
+    invoice_number = int(df_inv.iloc[0]['next'][0])
     for client in clients:
         print(f"=== Processing {client} ===")
         invoice_number = process_client(client, invoice_number)
