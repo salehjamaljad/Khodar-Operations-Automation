@@ -45,7 +45,7 @@ SPREADSHEET_NAME = "Khodar Pricing Control"
 worksheet = gc.open(SPREADSHEET_NAME).worksheet("Saved")
 
 df_inv = worksheet.get_all_values()
-df_inv = pd.DataFrame(df_inv)      # if df_inv was list-of-lists
+
 # --- Helpers ---
 def mark_purchase_order_done(client: str, delivery_date: str, city: Optional[str] = None):
     headers = {"apikey": API_KEY, "authorization": AUTHORIZATION, "content-type": "application/json"}
@@ -332,6 +332,7 @@ def process_client(selected_key: str, invoice_number: int) -> int:
 
 if __name__ == "__main__":
     clients = ["Khateer", "goodsmart", "halan",  "rabbit", "breadfast", "talabat"]
+    df_inv = pd.DataFrame(df_inv)      # if df_inv was list-of-lists
     invoice_number = int(df_inv.iloc[1, 0])  # A2
     for client in clients:
         print(f"=== Processing {client} ===")
