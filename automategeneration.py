@@ -84,41 +84,78 @@ def upload_order_and_metadata(
     city: Optional[str] = None,
     status: str = "Pending"
 ):
-    object_name = f"{int(order_date.replace('-', ''))}-{filename}"
+    # normalize dates to YYYY-MM-DD (Supabase date columns usually expect this)
+    def normalize_date(d):
+        if d is None:
+            return None
+        try:
+            # if already e.g. "2025-09-12T00:00:00", parse and reformat
+            dt = datetime.fromisoformat(str(d))
+            return dt.date().isoformat()
+        except Exception:
+            # try to return as-is (Supabase will complain if invalid)
+            return str(d)
+
+    order_date_n = normalize_date(order_date)
+    delivery_date_n = normalize_date(delivery_date)
+
+    object_name = f"{int(datetime.strptime(delivery_date_n, '%Y-%m-%d').strftime('%Y%m%d'))}-{filename}" if delivery_date_n else f"{int(time.time()*1000)}-{filename}"
     storage_url = f"{SUPABASE_URL}/storage/v1/object/{STORAGE_BUCKET}/{object_name}"
+
+    # upload to storage
     from tempfile import NamedTemporaryFile
-    with NamedTemporaryFile(delete=False, suffix=os.path.splitext(filename)[1]) as tmp:
-        tmp.write(file_bytes)
-        tmp_path = tmp.name
-    with open(tmp_path, 'rb') as f:
-        up = requests.post(
-            storage_url,
-            headers={"apikey": API_KEY, "authorization": AUTHORIZATION},
-            files={"file": (filename, f, "application/octet-stream")}
-        )
-    os.remove(tmp_path)
-    up.raise_for_status()
+    try:
+        with NamedTemporaryFile(delete=False, suffix=os.path.splitext(filename)[1]) as tmp:
+            tmp.write(file_bytes)
+            tmp_path = tmp.name
+        with open(tmp_path, 'rb') as f:
+            up = requests.post(
+                storage_url,
+                headers={"apikey": API_KEY, "authorization": AUTHORIZATION},
+                files={"file": (filename, f, "application/octet-stream")}
+            )
+        os.remove(tmp_path)
+        if not up.ok:
+            print("Storage upload failed:", up.status_code, up.text)
+            up.raise_for_status()
+    except Exception as e:
+        print("Storage upload exception:", str(e))
+        raise
+
+    # Public file URL (adjust if your bucket isn't public)
     file_url = f"{SUPABASE_URL}/storage/v1/object/public/{STORAGE_BUCKET}/{object_name}"
 
-    payload = [{
+    # build payload as a single object (makes error messages clearer)
+    payload_obj = {
         "client": client,
         "order_type": order_type,
-        "order_date": order_date,
-        "delivery_date": delivery_date,
+        "order_date": order_date_n,
+        "delivery_date": delivery_date_n,
         "status": status,
         "file_urls": [file_url],
         "city": city,
-        "po_number": po_number
-    }]
-    ins = requests.post(
-        SUPABASE_API_URL,
-        headers={"apikey": API_KEY, "authorization": AUTHORIZATION, "content-type": "application/json", "prefer": "return=representation"},
-        json=payload
-    )
-    if not ins.ok:
-        print("Supabase insert failed:", ins.status_code, ins.text)
-        ins.raise_for_status()
-    return ins.json()
+        "po_number": int(po_number) if po_number not in (None, "") else None
+    }
+
+    headers = {
+        "apikey": API_KEY,
+        "Authorization": AUTHORIZATION,
+        "Content-Type": "application/json",
+        "Prefer": "return=representation"
+    }
+
+    try:
+        ins = requests.post(SUPABASE_API_URL, headers=headers, json=payload_obj, timeout=30)
+        if not ins.ok:
+            # <-- crucial: print server message so you can see what Supabase complains about
+            print("Supabase insert failed:", ins.status_code)
+            print("Response body:", ins.text)
+            ins.raise_for_status()
+        return ins.json()
+    except requests.exceptions.RequestException as e:
+        print("Error posting metadata to Supabase:", str(e))
+        raise
+
 
 
 
