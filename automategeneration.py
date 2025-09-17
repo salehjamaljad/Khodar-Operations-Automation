@@ -7,6 +7,7 @@ from datetime import datetime
 import json
 import requests
 import gspread
+import pandas as pd
 
 from goodsmartInvoices import generate_invoice_excel
 from halanInvoices import build_master_and_invoices_bytes
@@ -44,7 +45,7 @@ SPREADSHEET_NAME = "Khodar Pricing Control"
 worksheet = gc.open(SPREADSHEET_NAME).worksheet("Saved")
 
 df_inv = worksheet.get_all_values()
-
+df_inv = pd.DataFrame(df_inv)      # if df_inv was list-of-lists
 # --- Helpers ---
 def mark_purchase_order_done(client: str, delivery_date: str, city: Optional[str] = None):
     headers = {"apikey": API_KEY, "authorization": AUTHORIZATION, "content-type": "application/json"}
