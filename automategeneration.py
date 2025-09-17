@@ -188,44 +188,7 @@ def process_client(selected_key: str, invoice_number: int) -> int:
                             city=order.get("city")
                         )
 
-                elif selected_key == "Khateer":
-                    zip_bytes, idx = rabbitInvoices(
-                        data,
-                        invoice_number,
-                        order.get("delivery_date"),
-                        branches_translation={
-                            "ميفيدا": "Mevida",
-                            "فرع المعادي": "MAADI",
-                            "فرع الدقي": "MOHANDSEEN",
-                            "فرع الرحاب": "Rehab",
-                            "فرع التجمع": "TGAMOE",
-                            "فرع مصر الجديدة": "MASR GEDIDA",
-                            "فرع مدينة نصر": "Nasr City",
-                            "اكتوبر٢": "OCTOBER",
-                            "فرع دريم": "Dream",
-                            "فرع زايد": "ZAYED",
-                            "فرع سوديك": "Sodic",
-                            "مدينتي": "Madinaty"
-                        }
-                    )
-                    invoice_number += idx + 1
-                    z = ZipFile(BytesIO(zip_bytes))
-                    inner = None; excels = []
-                    for n in z.namelist():
-                        c = z.read(n)
-                        if n.lower().endswith('.zip'): inner = c
-                        elif n.lower().endswith('.xlsx'): excels.append((n, c))
-                    if inner:
-                        upload_order_and_metadata(inner, f"{selected_key}_Invoice_{order['delivery_date']}.zip",
-                                                  selected_key, "Invoice", order['order_date'], order['delivery_date'], order.get('po_number'), order.get('city'))
-                    if excels:
-                        newz = BytesIO()
-                        with ZipFile(newz, 'w') as z2:
-                            for n, c in excels: z2.writestr(n, c)
-                        mark_purchase_order_done(selected_key.title(), order.get("delivery_date"), order.get("city"))
-                        upload_order_and_metadata(newz.getvalue(), f"{selected_key}_JobOrder_{order['delivery_date']}.zip",
-                                                  selected_key, "Job Order", order['order_date'], order['delivery_date'], order.get('po_number'), order.get('city'))
-                elif selected_key == "Rabbit":
+                elif selected_key in ("khateer", "rabbit"):
                     zip_bytes, idx = rabbitInvoices(
                         data,
                         invoice_number,
@@ -330,8 +293,8 @@ def process_client(selected_key: str, invoice_number: int) -> int:
 
 
 if __name__ == "__main__":
-    clients = ["goodsmart", "halan", "Khateer", "rabbit", "breadfast", "talabat"]
-    invoice_number = int(df_inv.iloc[1, 0])  # A2
+    clients = ["goodsmart", "halan", "khateer", "rabbit", "breadfast", "talabat"]
+    invoice_number = int(df_inv[1][0])  # A2
     for client in clients:
         print(f"=== Processing {client} ===")
         invoice_number = process_client(client, invoice_number)
