@@ -191,7 +191,7 @@ def process_client(selected_key: str, invoice_number: int) -> int:
                             city=order.get("city")
                         )
 
-                elif selected_key == "Khateer":
+                elif selected_key == "khateer":
                     zip_bytes, idx = rabbitInvoices(
                         data,
                         invoice_number,
@@ -333,7 +333,7 @@ def process_client(selected_key: str, invoice_number: int) -> int:
 
 
 if __name__ == "__main__":
-    clients = ["Khateer", "goodsmart", "halan",  "rabbit", "breadfast", "talabat"]
+    clients = ["khateer", "goodsmart", "halan",  "rabbit", "breadfast", "talabat"]
     for client in clients:
         print(f"=== Processing {client} ===")
         invoice_number = process_client(client, invoice_number)
