@@ -465,7 +465,8 @@ branches_translation_tlbt = {
     "الزقازيق": "Zagazig",
     "هيليوبليس شيراتون": "heliopolis sheraton",
     "الشروق 2": "Shrouk 2",
-    "زايد 2": "Zayed 2"
+    "زايد 2": "Zayed 2",
+    "التجمع البنفسج": "Elbanafsge"
 }
 
 branches_dict = {
