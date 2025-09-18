@@ -521,7 +521,8 @@ branches_dict = {
         "EG_Zakazik_DS_33": "الزقازيق",
         "EG_Heliopolis_Sheraton_DS_52": "هيليوبليس شيراتون",
         "EG_Shrouk_ Mgawra (2)_DS_51": "الشروق 2",
-        "EG_Sheikh zayed (2)_DS_53": "زايد 2"
+        "EG_Sheikh zayed (2)_DS_53": "زايد 2",
+        "EG_Tagamoa_El Banafseg_DS_55": "التجمع البنفسج"
     }
 
 
