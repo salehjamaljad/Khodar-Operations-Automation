@@ -460,7 +460,7 @@ def process_client(selected_key: str, invoice_number: int) -> int:
                         invoice_number=invoice_number,
                         delivery_date_str=d_date
                     )
-                    invoice_number += (1 if city == "Mansoura" else 2)
+                    invoice_number += 1 if city == "Mansoura" else 2 if city == "Alexandria" else 10
                     z = ZipFile(BytesIO(zip_bytes))
                     jobf = []; invf = []
                     for n in z.namelist():
