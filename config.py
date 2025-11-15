@@ -459,6 +459,7 @@ branches_translation_tlbt = {
     "المنصورة": "Mansoura",
     "الحي العاشر": "Nasr City Hay asher",
     "العبور": "Obour",
+    "العبور 2": "Obour 2",
     "برايت مول": "Bright Mall",
     "بالم هيلز": "Palm Hills",
     "بورسعيد": "portsaid",
@@ -517,6 +518,7 @@ branches_dict = {
         "EG_Mansoura_DS_25": "المنصورة",
         "EG_Nasrcity 10th_DS_40": "الحي العاشر",
         "EG_Obour_DS_30": "العبور",
+        "EG_El Obour Industrial Area_DS_57": "العبور 2",
         "EG_October industrial_DS_47": "برايت مول",
         "EG_Palmhills_DS_36": "بالم هيلز",
         "EG_Portsaid_DS_32": "بورسعيد",
@@ -718,3 +720,4 @@ ids_to_products = {
     "46436266": "بصل اخضر معبأ 200جم",
     "8699240":"بروكلي 500 جرام"
 }
+
