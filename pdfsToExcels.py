@@ -313,13 +313,9 @@ def process_talabat_invoices(
                 "SKU",
                 "category",
                 "PP",
-                "المعادي لاسلكي",
                 "الدقي",
-                "زهراء المعادي",
                 "ميدان لبنان",
                 "العجوزة",
-                "كورنيش المعادي",
-                "زهراء المعادي - 2",
                 "الظاهر",
                 "المقطم",
                 "السيدة زينب",
@@ -327,11 +323,8 @@ def process_talabat_invoices(
                 "المنيل",
                 "المقطم 2 هضبة",
                 "شبرا",
-                "زايد 2",
                 "حدائق الاهرام",
                 "اكتوبر",
-                "الشيخ زايد",
-                "بالم هيلز",
                 "سيتي ستارز",
                 "هيليوبليس",
             ]
@@ -770,3 +763,4 @@ def process_talabat_invoices(
 
         output_zip_buffer.seek(0)
         return output_zip_buffer.getvalue(), offset
+
