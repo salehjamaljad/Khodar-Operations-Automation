@@ -511,8 +511,7 @@ branches_translation_tlbt = {
     "التجمع البنفسج": "Elbanafsge",
     "التجمع الثالث روك فيرا": "RockVera",
     "اكتوبر فيستيفال" : "October Festival City",
-    "مدينه نصر الدولي" : "Naser City El Hadeeqa El Dawlia"
-}
+    "مدينه نصر الدولي" : "Nasr City - El Hadeeqa El Dawlia"
 
 branches_dict = {
         "EG_Alex East_DS_26": "سيدي بشر",
@@ -760,6 +759,7 @@ ids_to_products = {
     "46436266": "بصل اخضر معبأ 200جم",
     "8699240":"بروكلي 500 جرام"
 }
+
 
 
 
