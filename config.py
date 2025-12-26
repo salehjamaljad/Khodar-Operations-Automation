@@ -511,7 +511,7 @@ branches_translation_tlbt = {
     "التجمع البنفسج": "Elbanafsge",
     "التجمع الثالث روك فيرا": "RockVera",
     "اكتوبر فيستيفال" : "October Festival City",
-    "مدينه نصر حدائق الدولي" : "Naser City El Hadeeqa El Dawlia"
+    "مدينه نصر الدولي" : "Naser City El Hadeeqa El Dawlia"
 }
 
 branches_dict = {
@@ -572,7 +572,7 @@ branches_dict = {
         "EG_Tagamoa_El Banafseg_DS_55": "التجمع البنفسج",
         "EG_Rock Vera Mall_DS_56": "التجمع الثالث روك فيرا",
         "EG_October Festival City_DS_58" : "اكتوبر فيستيفال",
-        "EG_Nasr City (3)_DS_59" : "مدينه نصر حدائق الدولي"
+        "EG_Nasr City (3)_DS_59" : "مدينه نصر الدولي"
     }
 
 
@@ -760,6 +760,7 @@ ids_to_products = {
     "46436266": "بصل اخضر معبأ 200جم",
     "8699240":"بروكلي 500 جرام"
 }
+
 
 
 
