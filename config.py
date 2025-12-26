@@ -553,6 +553,7 @@ branches_dict = {
         "EG_Madinaty_DS_23": "مدينتي",
         "EG_Mansoura gomhoreya_DS_48": "المنصورة جمهورية",
         "EG_Mansoura_DS_25": "المنصورة",
+        "EG_Nasr City (3)_DS_59" : "مدينه نصر الدولي",
         "EG_Nasrcity 10th_DS_40": "الحي العاشر",
         "EG_Obour_DS_30": "العبور",
         "EG_El Obour Industrial Area_DS_57": "العبور 2",
@@ -570,15 +571,30 @@ branches_dict = {
         "EG_Sheikh zayed (2)_DS_53": "زايد 2",
         "EG_Tagamoa_El Banafseg_DS_55": "التجمع البنفسج",
         "EG_Rock Vera Mall_DS_56": "التجمع الثالث روك فيرا",
-        "EG_October Festival City_DS_58" : "اكتوبر فيستيفال",
-        "EG_Nasr City (3)_DS_59" : "مدينه نصر الدولي"
+        "EG_October Festival City_DS_58" : "اكتوبر فيستيفال"
     }
 
 
-special_codes = {
-        "EG_Alex East_DS_", "EG_Alex", "EG_Zahraa Maadi", "EG_Nasr", "EG_Nasr City", "EG_Nasrcity", "EG_Mansoura", 
-        "EG_Tagamoa Golden", "EG_Tagamoa", "EG_Madinaty", "EG_Hadayek", "EG_October", "EG_Shrouk_", "EG_Mokatam", "EG_Sheikh", "EG_Faisal", "EG_El Obour"
-    }
+special_codes_ordered = [
+    # put the more specific patterns earlier so they match first
+    "EG_Nasr City (3)_DS_59",
+    "EG_Nasrcity 10th",
+    "EG_Nasr City",
+    "EG_Nasrcity",
+    "EG_Mansoura gomhoreya",
+    "EG_Tagamoa Golden",
+    "EG_Tagamoa",
+    "EG_Madinaty",
+    "EG_Hadayek",
+    "EG_October",
+    "EG_Shrouk_",
+    "EG_Mokatam",
+    "EG_Sheikh",
+    "EG_Faisal",
+    "EG_El Obour",
+    "EG_Alex East_DS_",
+    # ... add other patterns you rely on, ordered by specificity
+]
 
 
 
