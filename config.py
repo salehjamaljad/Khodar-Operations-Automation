@@ -576,7 +576,7 @@ branches_dict = {
 
 
 special_codes = {
-        "EG_Alex East_DS_", "EG_Alex", "EG_Zahraa Maadi", "EG_Nasr", "EG_Nasrcity", "EG_Mansoura", 
+        "EG_Alex East_DS_", "EG_Alex", "EG_Zahraa Maadi", "EG_Nasr", "EG_Nasr City", "EG_Nasrcity", "EG_Mansoura", 
         "EG_Tagamoa Golden", "EG_Tagamoa", "EG_Madinaty", "EG_Hadayek", "EG_October", "EG_Shrouk_", "EG_Mokatam", "EG_Sheikh", "EG_Faisal", "EG_El Obour"
     }
 
