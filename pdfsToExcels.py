@@ -306,6 +306,7 @@ def process_talabat_invoices(
                 "سيدي بشر",
                 "الابراهيميه",
                 "وينجت",
+                "سموحه",
             ]
             ready_veg_columns = [
                 "Barcode",
@@ -763,4 +764,5 @@ def process_talabat_invoices(
 
         output_zip_buffer.seek(0)
         return output_zip_buffer.getvalue(), offset
+
 
