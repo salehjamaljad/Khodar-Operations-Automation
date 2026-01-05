@@ -457,7 +457,7 @@ def process_talabat_invoices(
                 cairo_df.to_excel(writer, index=False)
 
         # Step 3: Assign invoice numbers to each branch-level XLSX
-        special_branches = ["الابراهيميه", "سيدي بشر", "وينجت"]
+        special_branches = ["الابراهيميه", "سيدي بشر", "وينجت","سموحه"]
         branch_offsets = {}
         filenames = [f for f in os.listdir(output_dir) if f.endswith(".xlsx")]
         file_branch_map = {filename: filename.split("_")[0] for filename in filenames}
@@ -557,7 +557,7 @@ def process_talabat_invoices(
             f"مجمع_طلبات_القاهرة_{selected_date}.xlsx",
             "فواتير.xlsx"
         }
-        excluded_keywords = {"وينجت", "الابراهيميه", "سيدي بشر"}
+        excluded_keywords = {"وينجت", "الابراهيميه", "سيدي بشر","سموحه"}
         combined_wb = Workbook()
         combined_ws = combined_wb.active
         combined_ws.title = "CombinedOrders"
@@ -764,5 +764,6 @@ def process_talabat_invoices(
 
         output_zip_buffer.seek(0)
         return output_zip_buffer.getvalue(), offset
+
 
 
